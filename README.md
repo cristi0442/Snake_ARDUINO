@@ -1,0 +1,1 @@
+La commit-ul "snake arduino si interfata joc" am scris logica de cod pentru Arduino, care este folosit ca si controller, iar partea grafica a jocului este un script in Python. Urmeaza sa introduc si modificarile aferente lui Esp32, pentru stocarea in baza de date a scorului
