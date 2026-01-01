@@ -3,12 +3,12 @@ import time
 import random
 import serial
 
-SERIAL_PORT = 'COM3'
+SERIAL_PORT = 'COM5'
 BAUD_RATE = 9600
 WIDTH = 600
 HEIGHT = 400
 SNAKE_BLOCK = 20
-SNAKE_SPEED = 10
+SNAKE_SPEED = 5
 
 # Culori
 WHITE = (255, 255, 255)
