@@ -1,142 +1,108 @@
 import pygame
-import time
-import random
 import serial
+import sys
 
+# === CONFIGURARE ===
 SERIAL_PORT = 'COM5'
-BAUD_RATE = 9600
-WIDTH = 600
-HEIGHT = 400
-SNAKE_BLOCK = 20
-SNAKE_SPEED = 5
+BAUD_RATE = 115200
+BLOCK_SIZE = 30
+GRID_W = 20
+GRID_H = 10
 
 # Culori
-WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
-RED = (213, 50, 80)
+WHITE = (255, 255, 255)
 GREEN = (0, 255, 0)
-
-# Inițializare Serial
-try:
-    arduino = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=.1)
-    time.sleep(2)  # Așteaptă stabilirea conexiunii
-    print(f"Conectat la {SERIAL_PORT}")
-except:
-    print("NU s-a putut conecta la Arduino. Verifică portul!")
-    arduino = None
+RED = (255, 0, 0)
+GRAY = (50, 50, 50)
 
 # Inițializare Pygame
 pygame.init()
-dis = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption('Snake Game cu Arduino Control')
-clock = pygame.time.Clock()
+window_width = GRID_W * BLOCK_SIZE
+window_height = GRID_H * BLOCK_SIZE
+screen = pygame.display.set_mode((window_width, window_height))
+pygame.display.set_caption("Snake Arduino Display")
+font = pygame.font.SysFont("arial", 20)
 
-font_style = pygame.font.SysFont("bahnschrift", 25)
+# Inițializare Serial
+try:
+    ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=0.1)
+    print(f"Conectat la {SERIAL_PORT}")
+except Exception as e:
+    print(f"Eroare conectare serial: {e}")
+    sys.exit()
 
+running = True
+current_score = 0
+game_over_state = False
 
-def message(msg, color):
-    mesg = font_style.render(msg, True, color)
-    # Centrare text
-    text_rect = mesg.get_rect(center=(WIDTH / 2, HEIGHT / 2))
-    dis.blit(mesg, text_rect)
+while running:
 
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
 
-def gameLoop():
-    game_over = False
-    game_close = False
+    # --- CITIRE DATE DE LA ARDUINO ---
+    if ser.in_waiting > 0:
+        try:
+            # Citim linia și eliminăm spațiile/newline
+            line = ser.readline().decode('utf-8', errors='ignore').strip()
 
-    x1 = WIDTH / 2
-    y1 = HEIGHT / 2
-    x1_change = 0
-    y1_change = 0
+            # Verificăm dacă e pachetul nostru de date
+            if line.startswith("DATA:"):
+                # Eliminăm prefixul "DATA:"
+                content = line.split("DATA:")[1]
+                parts = content.split(";")
 
-    snake_List = []
-    Length_of_snake = 1
+                # Format: FoodXY; Len; SnakeCoords; Score; GameOver
+                if len(parts) >= 5:
+                    # 1. Mâncarea
+                    food_coords = parts[0].split(',')
+                    food_x = int(food_coords[0])
+                    food_y = int(food_coords[1])
 
-    foodx = round(random.randrange(0, WIDTH - SNAKE_BLOCK) / 20.0) * 20.0
-    foody = round(random.randrange(0, HEIGHT - SNAKE_BLOCK) / 20.0) * 20.0
+                    # 2. Șarpele
+                    snake_len = int(parts[1])
+                    snake_raw = parts[2].split(',')
+                    snake_body = []
+                    # Transformăm lista (x,y,x,y...) în tupluri [(x,y), (x,y)...]
+                    if len(snake_raw) >= 2:
+                        for i in range(0, len(snake_raw), 2):
+                            if i + 1 < len(snake_raw):
+                                snake_body.append((int(snake_raw[i]), int(snake_raw[i + 1])))
 
-    current_direction = ""
+                    # 3. Scor și Game Over
+                    current_score = int(parts[3])
+                    game_over_state = int(parts[4]) == 1
 
-    while not game_over:
+                    # --- DESENARE (Doar după ce avem date noi) ---
+                    screen.fill(BLACK)
 
-        while game_close == True:
-            dis.fill(BLACK)
-            message("Ai pierdut! Apasa Q-Quit sau C-Joca din nou", RED)
-            pygame.display.update()
+                    # Desenăm mâncarea
+                    pygame.draw.rect(screen, RED, (food_x * BLOCK_SIZE, food_y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE))
 
-            for event in pygame.event.get():
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_q:
-                        game_over = True
-                        game_close = False
-                    if event.key == pygame.K_c:
-                        gameLoop()
+                    # Desenăm șarpele
+                    for segment in snake_body:
+                        pygame.draw.rect(screen, GREEN,
+                                         (segment[0] * BLOCK_SIZE, segment[1] * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE))
+                        # Contur mic pentru a vedea segmentele
+                        pygame.draw.rect(screen, BLACK,
+                                         (segment[0] * BLOCK_SIZE, segment[1] * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE), 1)
 
-        if arduino and arduino.in_waiting > 0:
-            try:
-                data = arduino.readline().decode('utf-8').strip()
-                if data == 'L' and current_direction != 'R':
-                    x1_change = -SNAKE_BLOCK
-                    y1_change = 0
-                    current_direction = 'L'
-                elif data == 'R' and current_direction != 'L':
-                    x1_change = SNAKE_BLOCK
-                    y1_change = 0
-                    current_direction = 'R'
-                elif data == 'U' and current_direction != 'D':
-                    y1_change = -SNAKE_BLOCK
-                    x1_change = 0
-                    current_direction = 'U'
-                elif data == 'D' and current_direction != 'U':
-                    y1_change = SNAKE_BLOCK
-                    x1_change = 0
-                    current_direction = 'D'
-            except:
-                pass
+                    # Desenăm scorul
+                    score_text = font.render(f"Scor: {current_score}", True, WHITE)
+                    screen.blit(score_text, (10, 10))
 
-        # --- INPUT DE LA TASTATURĂ (Backup) ---
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                game_over = True
+                    # Mesaj Game Over
+                    if game_over_state:
+                        over_text = font.render("GAME OVER - Misca joystick pt Reset", True, WHITE)
+                        text_rect = over_text.get_rect(center=(window_width / 2, window_height / 2))
+                        screen.blit(over_text, text_rect)
 
-        # Verificăm limitele ecranului
-        if x1 >= WIDTH or x1 < 0 or y1 >= HEIGHT or y1 < 0:
-            game_close = True
+                    pygame.display.update()
 
-        x1 += x1_change
-        y1 += y1_change
-        dis.fill(BLACK)
+        except Exception as e:
+            pass
 
-        # Desenare mâncare
-        pygame.draw.rect(dis, RED, [foodx, foody, SNAKE_BLOCK, SNAKE_BLOCK])
-
-        # Logica Șarpelui
-        snake_Head = []
-        snake_Head.append(x1)
-        snake_Head.append(y1)
-        snake_List.append(snake_Head)
-        if len(snake_List) > Length_of_snake:
-            del snake_List[0]
-
-        for x in snake_List[:-1]:
-            if x == snake_Head:
-                game_close = True
-
-        for x in snake_List:
-            pygame.draw.rect(dis, GREEN, [x[0], x[1], SNAKE_BLOCK, SNAKE_BLOCK])
-
-        pygame.display.update()
-
-        if x1 == foodx and y1 == foody:
-            foodx = round(random.randrange(0, WIDTH - SNAKE_BLOCK) / 20.0) * 20.0
-            foody = round(random.randrange(0, HEIGHT - SNAKE_BLOCK) / 20.0) * 20.0
-            Length_of_snake += 1
-
-        clock.tick(SNAKE_SPEED)
-
-    pygame.quit()
-    quit()
-
-
-gameLoop()
+pygame.quit()
+ser.close()

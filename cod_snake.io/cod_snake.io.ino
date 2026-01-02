@@ -3,7 +3,7 @@ const int pinY = A1;
 
 const int width = 20;  
 const int height = 10; 
-int speed = 100;      
+int speed = 300;      
 
 // Variabile Șarpe
 int snakeX[100]; // Coordonatele X ale corpului (maxim 100 lungime)
