@@ -19,170 +19,209 @@ WHITE = (255, 255, 255)
 GREEN = (0, 255, 0)
 RED = (255, 0, 0)
 GRAY = (50, 50, 50)
-BLUE = (50, 50, 255)  # Culoare pentru Highscore
-
-# Variabile Joc
-high_score = 0  # Aici vom stoca recordul venit de pe net
+BLUE = (50, 50, 255)
 
 # Inițializare Pygame
 pygame.init()
 window_width = GRID_W * BLOCK_SIZE
 window_height = GRID_H * BLOCK_SIZE
 screen = pygame.display.set_mode((window_width, window_height))
-pygame.display.set_caption("Snake IoT - Highscore System")
+pygame.display.set_caption("Snake IoT - Loading...")
 font = pygame.font.SysFont("arial", 20)
+big_font = pygame.font.SysFont("arial", 40, bold=True)
 
-# --- 1. CONECTARE ARDUINO MEGA ---
-try:
-    mega_ser = serial.Serial(MEGA_PORT, BAUD_RATE, timeout=0.1)
-    print(f"✅ Conectat la MEGA pe {MEGA_PORT}")
-except Exception as e:
-    print(f"❌ Eroare conectare MEGA ({MEGA_PORT}): {e}")
-    sys.exit()
 
-# --- 2. CONECTARE ESP32 ---
-esp_ser = None
-try:
-    esp_ser = serial.Serial(ESP_PORT, BAUD_RATE, timeout=1)
+# --- FUNCTIE CONECTARE HARDWARE ---
+def init_connections():
+    mega = None
+    esp = None
 
-    # FORTAM pinii de control sa fie opriti (ca sa nu intre in Download Mode)
-    esp_ser.dtr = False
-    esp_ser.rts = False
+    # 1. MEGA
+    try:
+        mega = serial.Serial(MEGA_PORT, BAUD_RATE, timeout=0.1)
+        print(f"✅ MEGA conectat")
+    except:
+        print(f"❌ EROARE MEGA - Verifică portul!")
+        sys.exit()
 
-    print(f"✅ ESP32 conectat pe {ESP_PORT}")
-    print("⏳ Asteptam 10 secunde ca ESP32 sa porneasca...")
-    time.sleep(10)
+    # 2. ESP32
+    try:
+        esp = serial.Serial(ESP_PORT, BAUD_RATE, timeout=1)
+        esp.dtr = False
+        esp.rts = False
+        print(f"✅ ESP32 conectat")
+    except:
+        print(f"⚠️ ESP32 lipsă - se va juca offline")
 
-    # Curatam bufferul ca sa nu citim gunoaie vechi
-    esp_ser.reset_input_buffer()
+    return mega, esp
 
-    # === CEREM HIGHSCORE-UL LA PORNIRE ===
-    print("📥 Cer Highscore-ul din cloud...")
-    esp_ser.write(b"GET_HIGHSCORE\n")
 
-    print("🚀 GATA! Poti juca.")
+# --- FUNCTIE ECRAN INCARCARE (ANIMATIE) ---
+def show_loading_screen(esp_ser):
+    loading = True
+    found_score = 0
+    start_time = time.time()
+    last_req_time = time.time()
 
-except Exception as e:
-    print(f"⚠️ ATENTIE: Nu m-am putut conecta la ESP32 pe {ESP_PORT}.")
-    print(f"   Eroare: {e}")
+    # Cerem scorul imediat
+    if esp_ser:
+        esp_ser.reset_input_buffer()
+        esp_ser.write(b"GET_HIGHSCORE\n")
+
+    snake_anim_x = -30
+
+    while loading:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit();
+                sys.exit()
+
+        current_time = time.time()
+        elapsed = current_time - start_time
+
+        # Desenare Fundal
+        screen.fill(BLACK)
+        title_text = big_font.render("SNAKE IoT", True, GREEN)
+        screen.blit(title_text, (window_width // 2 - 90, window_height // 2 - 80))
+
+        if esp_ser:
+            status_text = font.render("Conectare la Cloud...", True, WHITE)
+        else:
+            status_text = font.render("Mod Offline", True, GRAY)
+            pygame.display.update()
+            time.sleep(1.5)
+            return 0
+
+        screen.blit(status_text, (window_width // 2 - 80, window_height // 2 + 50))
+
+        # Animatie Bara
+        snake_anim_x += 5
+        if snake_anim_x > window_width: snake_anim_x = -30
+        pygame.draw.rect(screen, GRAY, (50, window_height // 2, window_width - 100, 20), 2)
+        pygame.draw.rect(screen, GREEN, (50 + (elapsed * 50) % (window_width - 150), window_height // 2 + 2, 40, 16))
+
+        # COMUNICARE ESP32
+        if esp_ser:
+            if esp_ser.in_waiting:
+                try:
+                    lines = esp_ser.read_all().decode('utf-8', errors='ignore').split('\n')
+                    for line in lines:
+                        if line.strip().startswith("HIGHSCORE:"):
+                            try:
+                                found_score = int(line.strip().split(":")[1])
+                                print(f"🏆 SCOR GASIT: {found_score}")
+                                loading = False
+                            except:
+                                pass
+                except:
+                    pass
+
+            if current_time - last_req_time > 2.0:
+                print("🔄 Retry connect...")
+                esp_ser.write(b"GET_HIGHSCORE\n")
+                last_req_time = current_time
+
+        if elapsed > 15.0:  # Timeout redus la 8 secunde
+            print("⚠️ Timeout. Jucam cu 0.")
+            loading = False
+
+        pygame.display.update()
+        pygame.time.delay(30)
+
+    return found_score
+
+
+# ==========================================
+#               MAIN PROGRAM
+# ==========================================
+
+mega_ser, esp_ser = init_connections()
+high_score = show_loading_screen(esp_ser)
+
+# Configurare joc
+pygame.display.set_caption(f"Snake IoT - Best: {high_score}")
+print("🚀 GATA! Incepem jocul.")
+
+# CURATAM BUFFERUL MEGA ===
+
+mega_ser.reset_input_buffer()
+
 
 running = True
 current_score = 0
 game_over_state = False
 
 while running:
-
     for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
+        if event.type == pygame.QUIT: running = False
 
-    # --- CITIRE DATE DE LA ARDUINO MEGA ---
-    if mega_ser.in_waiting > 0:
+    # --- A. MEGA (Jocul) ---
+    if mega_ser.in_waiting:
         try:
             line = mega_ser.readline().decode('utf-8', errors='ignore').strip()
 
-            # CAZUL A: Primim date de desenare (DATA:...)
             if line.startswith("DATA:"):
                 try:
                     content = line.split("DATA:")[1]
                     parts = content.split(";")
-
                     if len(parts) >= 5:
-                        # 1. Parsing date
                         food_coords = parts[0].split(',')
-                        food_x = int(food_coords[0])
-                        food_y = int(food_coords[1])
+                        food_x, food_y = int(food_coords[0]), int(food_coords[1])
 
                         snake_len = int(parts[1])
-                        snake_raw = parts[2].split(',')
-                        snake_body = []
-                        if len(snake_raw) >= 2:
-                            for i in range(0, len(snake_raw), 2):
-                                if i + 1 < len(snake_raw):
-                                    snake_body.append((int(snake_raw[i]), int(snake_raw[i + 1])))
+                        snake_raw = list(map(int, parts[2].split(',')))
+                        snake_body = [(snake_raw[i], snake_raw[i + 1]) for i in range(0, len(snake_raw), 2)]
 
                         current_score = int(parts[3])
                         game_over_state = int(parts[4]) == 1
 
-                        # 2. Desenare
+                        # === DESENARE ===
                         screen.fill(BLACK)
 
                         # Mâncare
-                        pygame.draw.rect(screen, RED,
-                                         (food_x * BLOCK_SIZE, food_y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE))
+                        pygame.draw.rect(screen, RED, (food_x * 30, food_y * 30, 30, 30))
 
-                        # Șarpe
-                        for segment in snake_body:
-                            pygame.draw.rect(screen, GREEN,
-                                             (segment[0] * BLOCK_SIZE, segment[1] * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE))
-                            pygame.draw.rect(screen, BLACK,
-                                             (segment[0] * BLOCK_SIZE, segment[1] * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE),
-                                             1)
+                        # Sarpe (REPARAT: Acum desenam un patrat PLIN, nu doar contur)
+                        for s in snake_body:
+                            # 1. Patratul Verde (Plin)
+                            pygame.draw.rect(screen, GREEN, (s[0] * 30, s[1] * 30, 30, 30))
+                            # 2. Contur Negru (pentru aspect)
+                            pygame.draw.rect(screen, BLACK, (s[0] * 30, s[1] * 30, 30, 30), 1)
 
-                        # Text Scor Curent (Stanga)
-                        score_text = font.render(f"Scor: {current_score}", True, WHITE)
-                        screen.blit(score_text, (10, 10))
+                        # HUD
+                        score_txt = font.render(f"Scor: {current_score}", True, WHITE)
+                        hs_txt = font.render(f"Best: {high_score}", True, BLUE)
+                        screen.blit(score_txt, (10, 10))
+                        screen.blit(hs_txt, (window_width - 100, 10))
 
-                        # === Text High Score (Dreapta) ===
-                        hs_text = font.render(f"Best: {high_score}", True, BLUE)
-                        screen.blit(hs_text, (window_width - 100, 10))
-                        # =================================
-
-                        # Game Over Overlay
                         if game_over_state:
-                            over_text = font.render("GAME OVER", True, WHITE)
-                            text_rect = over_text.get_rect(center=(window_width / 2, window_height / 2))
-                            screen.blit(over_text, text_rect)
+                            msg = font.render("GAME OVER", True, WHITE)
+                            screen.blit(msg, (window_width // 2 - 50, window_height // 2))
 
                         pygame.display.update()
+                except Exception as e:
+                    pass
+
+            elif line.startswith("SET_SCORE:"):
+                try:
+                    val = int(line.split(":")[1])
+                    if val > high_score:
+                        if esp_ser:
+                            print(f"🏆 RECORD NOU: {val}")
+                            esp_ser.write((line + "\n").encode())
+                            high_score = val
                 except:
                     pass
 
-            # CAZUL B: Primim comanda de scor la final de joc (SET_SCORE:...)
-            elif line.startswith("SET_SCORE:"):
-                print(f"🎯 Primit de la Mega: {line}")
-
-                # Parsam scorul primit
-                try:
-                    valoare_primita = int(line.split(":")[1])
-                except:
-                    valoare_primita = 0
-
-                # === LOGICA DE COMPARARE ===
-                if valoare_primita > high_score:
-                    print(f"🏆 RECORD NOU! ({valoare_primita} > {high_score}) -> Trimit la Cloud...")
-
-                    if esp_ser:
-                        mesaj_complet = line + "\n"
-                        esp_ser.write(mesaj_complet.encode('utf-8'))
-                        esp_ser.flush()
-
-                        # Actualizam local recordul imediat
-                        high_score = valoare_primita
-                    else:
-                        print("❌ Nu pot trimite (ESP32 deconectat)")
-                else:
-                    print(f"📉 Scor prea mic pentru upload. (Record actual: {high_score})")
-                # ===========================
-
-        except Exception as e:
+        except:
             pass
 
-    # --- Verificam daca ESP32 ne raspunde (Highscore sau confirmare upload) ---
-    if esp_ser and esp_ser.in_waiting > 0:
+    # --- B. ESP32 (Update) ---
+    if esp_ser and esp_ser.in_waiting:
         try:
-            esp_line = esp_ser.readline().decode('utf-8', errors='ignore').strip()
-            if esp_line:
-                print(f"[ESP32 Răspunde]: {esp_line}")
-
-                # Daca primim Highscore-ul de la ESP (la pornire)
-                if esp_line.startswith("HIGHSCORE:"):
-                    try:
-                        val = int(esp_line.split(":")[1])
-                        high_score = val
-                        print(f"✅ Highscore actualizat din cloud: {high_score}")
-                    except:
-                        pass
+            r = esp_ser.readline().decode().strip()
+            if r.startswith("HIGHSCORE:"):
+                high_score = int(r.split(":")[1])
         except:
             pass
 
