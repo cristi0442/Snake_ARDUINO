@@ -32,6 +32,11 @@ void setup() {
     delay(500);
   }
 
+  Serial.println("⏳ Caut Highscore-ul initial...");
+  // String startScore = getSupabaseScore();
+  // Serial.print("HIGHSCORE:");
+  // Serial.println(startScore);
+
 }
 
 void loop() {
@@ -43,6 +48,7 @@ void loop() {
     if (command == "GET_HIGHSCORE") {
       String hs = getSupabaseScore();
       // Raspundem catre PC (si PC-ul va trimite la Mega)
+      Serial.print("HIGHSCORE:");
       Serial.println(hs); 
     }
     else if (command.startsWith("SET_SCORE:")) {
