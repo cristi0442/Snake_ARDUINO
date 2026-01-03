@@ -1,8 +1,8 @@
 const int pinX = A0;
 const int pinY = A1;
 
-const int width = 20;  
-const int height = 10; 
+int width = 20;  
+int height = 10; 
 int speed = 300;      
 
 // Variabile Șarpe
@@ -52,13 +52,50 @@ void loop() {
         resetGame();
         break;
       }
+      
     }
+    checkSettings();
   }
 
+  // if (Serial.available()) {
+  //   String cmd = Serial.readStringUntil('\n');
+  //   cmd.trim();
+    
+  //   if (cmd.startsWith("SET_SPEED:")) {
+  //     int newSpeed = cmd.substring(10).toInt();
+  //     speed = newSpeed;
+  //     // Confirmare vizuala pe Serial (optional)
+  //   }
+  // }
+
+  checkSettings();
   readJoystick();
   logic();
   draw();
   delay(speed);
+}
+
+void checkSettings() {
+
+  if (Serial.available()) {
+    String cmd = Serial.readStringUntil('\n');
+    cmd.trim();
+    
+    // 1. Schimbare Viteza
+    if (cmd.startsWith("SET_SPEED:")) {
+      speed = cmd.substring(10).toInt();
+    }
+    // 2. Schimbare Grid (Format: SET_GRID:20,15)
+    else if (cmd.startsWith("SET_GRID:")) {
+      String params = cmd.substring(9);
+      int commaIndex = params.indexOf(',');
+      if (commaIndex > 0) {
+        width = params.substring(0, commaIndex).toInt();
+        height = params.substring(commaIndex + 1).toInt();
+        resetGame(); // Resetam jocul ca sa aplicam harta noua
+      }
+    }
+  }
 }
 
 void resetGame() {
