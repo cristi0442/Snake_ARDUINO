@@ -2,7 +2,7 @@
 
 const int pinX = A0;
 const int pinY = A1;
-const int pinSW = 2; // Buton Joystick
+const int pinSW = 2; 
 
 // --- CONFIGURARE INITIALA ---
 int width = 20;  
@@ -11,13 +11,14 @@ int speed = 300;
 
 // Variabile Timp si Logica
 unsigned long lastSpeedIncreaseTime = 0; 
-int accelerationInterval = 15000; // 15 secunde default       
+int accelerationInterval = 15000; 
 bool wallsActive = false; 
 bool isPaused = false;     
 bool lastSwState = HIGH;   
+bool dirChanged = false; 
 
-int snakeX[400]; 
-int snakeY[400];
+int snakeX[800]; 
+int snakeY[800];
 int snakeLen = 1;
 
 int foodX, foodY;
@@ -30,7 +31,7 @@ void setup() {
   Serial.begin(115200); 
   pinMode(pinX, INPUT);
   pinMode(pinY, INPUT);
-  pinMode(pinSW, INPUT_PULLUP); // Activam rezistenta interna
+  pinMode(pinSW, INPUT_PULLUP);
   
   randomSeed(analogRead(A5));
   updateIntervalBasedOnSpeed(); 
@@ -52,7 +53,7 @@ void loop() {
     logic();
   }
   
-  draw(); // Desenam continuu (chiar si in pauza)
+  draw();
   delay(speed);
 }
 
@@ -72,16 +73,16 @@ void handleSpeedIncrease() {
       lastSpeedIncreaseTime = millis();
       if (speed > 30) {
         speed -= 10;
-        Serial.println("EVENT:SPEED_UP"); // Trimitem notificare la Python
+        Serial.println("EVENT:SPEED_UP"); 
       }
     }
   }
 }
 
 void updateIntervalBasedOnSpeed() {
-  if (speed >= 300) accelerationInterval = 15000; // Easy
-  else if (speed >= 150) accelerationInterval = 20000; // Medium
-  else accelerationInterval = 40000; // Hard
+  if (speed >= 300) accelerationInterval = 15000; 
+  else if (speed >= 150) accelerationInterval = 20000; 
+  else accelerationInterval = 40000; 
 }
 
 void checkSettings() {
@@ -117,6 +118,7 @@ void resetGame() {
   dir = 0; 
   gameOver = false;
   isPaused = false;
+  dirChanged = false; // Resetam protectia
   spawnFood();
   lastSpeedIncreaseTime = millis();
 }
@@ -136,12 +138,26 @@ void spawnFood() {
 }
 
 void readJoystick() {
+  // Daca am schimbat deja directia in tura asta, IGNORAM orice alta miscare
+  // pana cand sarpele face pasul fizic in logic()
+  if (dirChanged) return; 
+
   joyX = analogRead(pinX);
   joyY = analogRead(pinY);
-  if (joyX < 200 && dir != 4) dir = 3;
-  else if (joyX > 800 && dir != 3) dir = 4;
-  if (joyY < 200 && dir != 2) dir = 1;
-  else if (joyY > 800 && dir != 1) dir = 2;
+  
+  int newDir = dir; // Salvam directia curenta
+
+  if (joyX < 200 && dir != 4) newDir = 3;
+  else if (joyX > 800 && dir != 3) newDir = 4;
+  
+  if (joyY < 200 && dir != 2) newDir = 1;
+  else if (joyY > 800 && dir != 1) newDir = 2;
+
+  // Daca directia s-a schimbat fata de cea veche, marcam schimbarea
+  if (newDir != dir) {
+    dir = newDir;
+    dirChanged = true; 
+  }
 }
 
 void logic() {
@@ -153,6 +169,9 @@ void logic() {
   else if (dir == 2) snakeY[0]++;
   else if (dir == 3) snakeX[0]--;
   else if (dir == 4) snakeX[0]++;
+  
+  // Dupa ce am facut pasul, DEBLOCAM joystick-ul pentru urmatoarea miscare
+  dirChanged = false; 
   
   if (dir == 0) return;
 
@@ -210,7 +229,6 @@ void draw() {
   Serial.print(";");
   Serial.print(score); Serial.print(";");
   Serial.print(gameOver ? 1 : 0); Serial.print(";");
-  // Date suplimentare: Viteza si Pauza
   Serial.print(speed); Serial.print(";");
   Serial.println(isPaused ? 1 : 0);
 }
