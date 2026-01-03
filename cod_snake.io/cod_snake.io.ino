@@ -40,6 +40,10 @@ void loop() {
     Serial.println("\n\n=== GAME OVER ===");
     Serial.print("Scor Final: ");
     Serial.println(score);
+
+    Serial.print("SET_SCORE:");   
+    Serial.println(score);       
+
     Serial.println("Misca joystick-ul pentru a restarta...");
     delay(1000);
     
