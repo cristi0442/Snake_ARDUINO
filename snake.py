@@ -2,11 +2,11 @@ import pygame
 import serial
 import sys
 import time
-import math  # Import necesar pentru animatii
+import math
 
 # --- CONFIGURARE ---
-MEGA_PORT = 'COM5'  # <--- VERIFICA PORTUL
-ESP_PORT = 'COM6'  # <--- VERIFICA PORTUL
+MEGA_PORT = 'COM5'
+ESP_PORT = 'COM6'
 BAUD_RATE = 115200
 
 BLOCK_SIZE = 30
@@ -19,7 +19,7 @@ BG_COLOR = (20, 20, 25)  # Dark Navy Blue (Fundal)
 GRID_COLOR = (40, 40, 50)  # Gri subtil pentru linii
 UI_BG_COLOR = (30, 30, 35)  # Bara de sus
 
-BLACK = (0, 0, 0)  # <--- AM ADAUGAT DEFINITIA LIPSA
+BLACK = (0, 0, 0)
 WHITE = (240, 240, 240)
 GREEN = (46, 204, 113)  # Emerald Green
 RED = (231, 76, 60)  # Alizarin Red
@@ -96,7 +96,7 @@ def draw_apple(x, y):
     # Corpul marului (Rosu)
     pygame.draw.circle(screen, RED, (center_x, center_y), radius)
 
-    # Reflexie (Luciu - il face sa para 3D)
+    # Reflexie
     pygame.draw.circle(screen, (255, 100, 100), (center_x - 4, center_y - 4), radius // 3)
 
     # Codița
@@ -127,16 +127,16 @@ def draw_snake_segment(x, y, color, is_head=False):
         pygame.draw.circle(screen, WHITE, left_eye, eye_radius)
         pygame.draw.circle(screen, WHITE, right_eye, eye_radius)
 
-        # Pupile (Negru) - AICI ERA EROAREA (Acum BLACK e definit)
+        # Pupile (Negru)
         pygame.draw.circle(screen, BLACK, left_eye, 2)
         pygame.draw.circle(screen, BLACK, right_eye, 2)
 
 
 # --- LOADING SCREEN ---
 def show_loading_screen(esp_ser):
-    loading = True;
-    found_score = 0;
-    start_time = time.time();
+    loading = True
+    found_score = 0
+    start_time = time.time()
     last_req_time = time.time()
     if esp_ser: esp_ser.reset_input_buffer(); esp_ser.write(b"GET_HIGHSCORE\n")
 
@@ -170,10 +170,10 @@ def show_loading_screen(esp_ser):
                 except:
                     pass
             if time.time() - last_req_time > 2.0:
-                esp_ser.write(b"GET_HIGHSCORE\n");
+                esp_ser.write(b"GET_HIGHSCORE\n")
                 last_req_time = time.time()
         else:
-            time.sleep(1);
+            time.sleep(1)
             return 0
 
         # Bara de progres
@@ -239,7 +239,7 @@ while running:
                                 last_sent_score = current_score
                             esp_ser.write(f"LIVE_SPEED:{current_speed}\n".encode())
 
-                        # --- DESENARE PROFESIONALA ---
+                        # DESENARE
                         screen.fill(BG_COLOR)
                         draw_grid()
 
@@ -348,7 +348,7 @@ while running:
             elif r.startswith("HIGHSCORE:"):
                 high_score = int(r.split(":")[1])
             elif "IP PENTRU TELEFON" in r:
-                print(f"🌐 {r}")
+                print(f" {r}")
         except:
             pass
 

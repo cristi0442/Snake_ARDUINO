@@ -5,7 +5,7 @@
 #include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
 
-// === DATELE TALE ===
+// Credentiale pentru retea WiFi
 const char* ssid = "DIGI-t3P6";
 const char* password = "38KhEV4K";
 
@@ -19,7 +19,7 @@ int liveSpeed = 300;
 
 WebServer server(80);   
 
-// HTML + CSS + JS (Dashboard Profi)
+// Configurare pagina telefon
 const char* htmlPage = R"rawliteral(
 <!DOCTYPE html><html>
 <head>
@@ -209,7 +209,7 @@ void loop() {
   }
 }
 
-// --- SUPABASE FUNCTIONS ---
+// Functii de interogare tabel in Supabase
 void updateSupabaseScore(String scoreVal, int id) {
   if(WiFi.status() == WL_CONNECTED){
     WiFiClientSecure client; client.setInsecure(); HTTPClient http;

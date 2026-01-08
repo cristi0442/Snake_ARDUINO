@@ -4,14 +4,14 @@ const int pinX = A0;
 const int pinY = A1;
 const int pinSW = 2; 
 
-// --- CONFIGURARE INITIALA ---
+// Configurare initiala
 int width = 20;  
 int height = 10;
 int speed = 300;      
 
 // Variabile Timp si Logica
 unsigned long lastSpeedIncreaseTime = 0; 
-int accelerationInterval = 15000; 
+int accelerationInterval = 15000; // in ms
 bool wallsActive = false; 
 bool isPaused = false;     
 bool lastSwState = HIGH;   
@@ -57,7 +57,7 @@ void loop() {
   delay(speed);
 }
 
-// --- FUNCTII ---
+// Implementare functii
 
 void readButton() {
   int swState = digitalRead(pinSW);
