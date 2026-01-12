@@ -6,8 +6,8 @@
 #include "soc/rtc_cntl_reg.h"
 
 // Credentiale pentru retea WiFi
-const char* ssid = "DIGI-t3P6";
-const char* password = "38KhEV4K";
+const char* ssid = "LAPTOP_CRISTIAN";
+const char* password = "Cristian42";
 
 String supabase_url = "https://trxwaqqoveluhysicitc.supabase.co";
 String supabase_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRyeHdhcXFvdmVsdWh5c2ljaXRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczNzk3NzYsImV4cCI6MjA4Mjk1NTc3Nn0.B3pHaLhfaMxsOTmYnwrYNiEnUYzPtVM0lKj0lAv0b5g";
