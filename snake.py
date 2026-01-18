@@ -50,7 +50,7 @@ except:
 
 # --- CONEXIUNI ---
 def init_connections():
-    mega = None;
+    mega = None
     esp = None
     try:
         mega = serial.Serial(MEGA_PORT, BAUD_RATE, timeout=0.1)
@@ -59,7 +59,7 @@ def init_connections():
         sys.exit()
     try:
         esp = serial.Serial(ESP_PORT, BAUD_RATE, timeout=1)
-        esp.dtr = False;
+        esp.dtr = False
         esp.rts = False
         print(f"✅ ESP32 conectat")
     except:
@@ -185,7 +185,7 @@ def show_loading_screen(esp_ser):
                          (window_width // 2 - 100, window_height // 2 + 60, fill_width, 10), border_radius=5)
 
         if elapsed > 10.0: loading = False
-        pygame.display.update();
+        pygame.display.update()
         pygame.time.delay(30)
     return found_score
 
@@ -196,8 +196,8 @@ high_score = show_loading_screen(esp_ser)
 pygame.display.set_caption(f"Snake IoT - Best: {high_score}")
 mega_ser.reset_input_buffer()
 
-notif_text = "";
-notif_start = 0;
+notif_text = ""
+notif_start = 0
 notif_dur = 2.0
 
 running = True
@@ -327,9 +327,9 @@ while running:
                     else:
                         CURRENT_SNAKE_COLOR = GREEN
 
-                    mega_ser.write(f"SET_SPEED:{spd}\n".encode());
+                    mega_ser.write(f"SET_SPEED:{spd}\n".encode())
                     time.sleep(0.05)
-                    mega_ser.write(f"SET_GRID:{grid}\n".encode());
+                    mega_ser.write(f"SET_GRID:{grid}\n".encode())
                     time.sleep(0.05)
                     mega_ser.write(f"SET_WALLS:{walls}\n".encode())
 
@@ -339,9 +339,9 @@ while running:
                     screen = pygame.display.set_mode((window_width, window_height))
 
                     esp_ser.write(b"GET_HIGHSCORE\n")
-                    high_score = 0;
+                    high_score = 0
                     last_sent_score = -1
-                    time.sleep(0.1);
+                    time.sleep(0.1)
                     mega_ser.reset_input_buffer()
                 except Exception as e:
                     print(e)
